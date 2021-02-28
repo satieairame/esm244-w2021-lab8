@@ -1,0 +1,126 @@
+---
+title: "lab8_part1"
+author: "Satie Airame"
+date: "2/27/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(janitor)
+library(palmerpenguins)
+library(NbClust)
+library(factoextra)
+library(cluster)
+library(dendextend)
+library(ggdendro)
+```
+
+# Part 1. K-means clustering
+
+## Exploratory visualization
+
+```{r}
+# Bill length versus depth exploratory plot:
+
+ggplot(penguins) +
+  geom_point(aes(x = bill_length_mm,
+                 y = bill_depth_mm,
+                 color = species,
+                 shape = sex),
+             size = 3,
+             alpha = 0.7) +
+  scale_color_manual(values = c("orange", "cyan4", "darkmagenta"))
+```
+
+```{r}
+# Flipper length versus body mass exploratory plot:
+
+ggplot(penguins) +
+  geom_point(aes(x=flipper_length_mm,
+                 y=body_mass_g,
+                 color = species,
+                 shape = sex),
+             size = 3,
+             alpha = 0.7)+
+  scale_color_manual(values = c("orange", "cyan4", "darkmagenta"))
+```
+# Pick the number of clusters
+
+```{r}
+# How many clusters do you think there should be?
+number_est <- NbClust(penguins[3:6], min.nc = 2, max.nc = 10, method = "kmeans")
+```
+## The Hubert index is a graphic method of determining the number of clusters. In the plot of Hubert index, we seek a significant knee that corresponds to a significant increase of the value of the measure, i.e., the significant peak in Hubert index second difference plot.
+
+## The D index is a graphica method of determining the number of clusters. In the plot of D index, we seek a significant knee (the significant peak in Dindex second differences plot) thta corresponds to a significant increase of the value of the measure.
+
+```{r}
+# Check out the results (just look at the first summary report):
+number_est
+```
+
+## By these estimators, 2 is identified as the best number of clusters by the largest number of algorithms (8/30) but should that change our mind? Maybe...but I think it makes sense to still stick with 3 (a cluster for 3ach species) and see how it does.
+
+# Create a complete, scaled version of the data
+
+```{r}
+# Drop rows where any of the four size measures is missing.
+
+penguins_complete <- penguins %>% 
+  drop_na(bill_length_mm, bill_depth_mm, body_mass_g, flipper_length_mm)
+
+# Only keep the columns for the four size measurements, then SCALE them.
+
+penguins_scale <- penguins_complete %>% 
+  select(ends_with("mm"), body_mass_g) %>% 
+  scale() # See ?scale for details on scaling
+```
+
+# Run k-means
+
+```{r}
+penguins_km <- kmeans(penguins_scale, 3) # kmeans specifying 3 groups to start
+penguins_km
+```
+```{r}
+# See what it returns (differnet elements returned by kmeans function):
+penguins_km$size # How many observations assigned to each cluster
+```
+```{r}
+penguins_km$cluster # What cluster each observation in penguins_scale is assigned to
+```
+```{r}
+# Bind the cluster number to the original data used for clustering, so that we can see what cluster each penguin is assigned to
+penguins_cl <- data.frame(penguins_complete, cluster_no = factor(penguins_km$cluster))
+
+
+# Plot flipper length versus body mass, indicating which cluster each penguin is assigned to (but also showing the actual species)
+ggplot(penguins_cl) +
+  geom_point(aes(x=flipper_length_mm,
+                 y=body_mass_g,
+                 color=cluster_no,
+                 shape=species))
+```
+```{r}
+# Plot bill depth vs bill length, indicating which cluster each penguin is assigned to (but also showing the actual species)
+ggplot(penguins_cl) +
+  geom_point(aes(x=bill_length_mm,
+                 y=bill_depth_mm,
+                 color=cluster_no,
+                 shape=species))
+```
+
+```{r}
+# Find the counts of each species assigned to each cluster, then pivot_wider() to make it a contingency table:
+
+penguins_cl %>% 
+  count(species, cluster_no) %>% 
+  pivot_wider(names_from = cluster_no, values_from = n)  %>% 
+  rename('Cluster 1' = '1', 'Cluster 2' = '2', 'Cluster 3' = '3')
+```
+
+
+

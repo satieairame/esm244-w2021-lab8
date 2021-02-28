@@ -1,0 +1,85 @@
+---
+title: "lab8_part2"
+author: "Satie Airame"
+date: "2/27/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(janitor)
+library(palmerpenguins)
+library(NbClust)
+library(factoextra)
+library(cluster)
+library(dendextend)
+library(ggdendro)
+```
+
+```{r}
+# Get the data
+wb_env <- read_csv("wb_env.csv")
+```
+```{r}
+# Only keep top 20 greenhouse gas emitters )for simplifying visualization here)
+wb_ghg_20 <- wb_env %>% 
+  arrange(-ghg) %>% 
+  head(20)
+```
+
+# Scale the data
+
+```{r}
+# Scale the numeric variables in columns 3:7
+wb_scaled <- wb_ghg_20 %>% 
+  select(3:7) %>% 
+  scale()
+
+# Update to add rownames (country name from wb_ghg_20
+rownames(wb_scaled) <- wb_ghg_20$name
+
+```
+```{r}
+# Compute dissimilarity values (Euclidean distance)
+euc_distance <- dist(wb_scaled, method = "euclidean")
+```
+# Perform hierarchical clustering by complete linkage with stats::hclust()
+
+```{r}
+# Hierarchical clustering (complete linkage)
+hc_complete <- hclust(euc_distance, method = "complete")
+
+# Plot it (base plot):
+plot(hc_complete, cex = 0.6, hang = -1)
+```
+# Clustering by single linkage
+
+```{r}
+# Hierarchical clustering (single linkage)
+hc_single <- hclust(euc_distance, method = "single")
+plot(hc_single, cex = 0.6, hang = -1)
+```
+# Make a tanglegram to compare dendrograms
+
+```{r}
+# Convert to class dendrogram
+dend_complete <- as.dendrogram(hc_complete)
+dend_simple <- as.dendrogram(hc_single)
+
+# Make a tanglegram
+tanglegram(dend_complete, dend_simple)
+```
+
+# Plot dendrogram with ggplot
+
+```{r}
+ggdendrogram(hc_complete,
+             rotate = TRUE) +
+  theme_minimal() +
+  labs(x = "Country")
+
+# Then you can customize with ggplot tools
+```
+
